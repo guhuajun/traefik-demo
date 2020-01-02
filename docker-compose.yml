@@ -1,18 +1,19 @@
 version: "3"
 
-services: 
+services:
   traefik:
     image: traefik:2.1
     hostname: traefik
     # Enables the web UI and tells Traefik to listen to docker
-    command: [
-      "--api.insecure=true", 
-      "--providers.docker", 
-      "--metrics.prometheus=true",
-      "--tracing.jaeger=true",
-      "--tracing.jaeger.samplingServerURL=http://jaeger:5778/sampling",
-      "--tracing.jaeger.localAgentHostPort=jaeger:6831"
-    ]
+    command:
+      [
+        "--api.insecure=true",
+        "--providers.docker",
+        "--metrics.prometheus=true",
+        "--tracing.jaeger=true",
+        "--tracing.jaeger.samplingServerURL=http://jaeger:5778/sampling",
+        "--tracing.jaeger.localAgentHostPort=jaeger:6831",
+      ]
     ports:
       # The HTTP port
       - "80:80"
@@ -21,10 +22,9 @@ services:
     volumes:
       # So that Traefik can listen to the Docker events
       - /var/run/docker.sock:/var/run/docker.sock
-    networks: 
+    networks:
       traefik:
         ipv4_address: 192.168.10.10
-
 
   # demo apps
   whoami:
@@ -32,7 +32,7 @@ services:
     image: containous/whoami
     labels:
       - "traefik.http.routers.whoami.rule=Host(`whoami.app.contoso.com`)"
-    networks: 
+    networks:
       traefik:
 
   vote:
@@ -41,17 +41,19 @@ services:
       - "traefik.http.routers.vote.rule=Host(`vote.app.contoso.com`)"
     ports:
       - 5000:80
-    networks: 
+    networks:
       traefik:
-    depends_on: 
+    depends_on:
       - db
       - redis
 
   worker:
     image: voting/worker:0.1
-    networks: 
+    ports:
+      - 5432:5432
+    networks:
       traefik:
-    depends_on: 
+    depends_on:
       - db
       - redis
 
@@ -62,22 +64,22 @@ services:
     ports:
       - 5001:80
       - 5858:5858
-    networks: 
+    networks:
       traefik:
-    depends_on: 
+    depends_on:
       - db
       - redis
 
   redis:
     image: redis:alpine
     hostname: redis
-    networks: 
+    networks:
       traefik:
 
   db:
     image: postgres:9.4
     hostname: db
-    networks: 
+    networks:
       traefik:
 
   # tracing
@@ -85,33 +87,33 @@ services:
     image: jaegertracing/all-in-one:1.16.0
     hostname: jaeger
     ports:
-      - 16686:16686    
-    networks: 
-      traefik:    
+      - 16686:16686
+    networks:
+      traefik:
 
-  # locust:
-  #   image: greggu/traefik-locust:0.1
-  #   hostname: locust
-  #   build:
-  #     context: ./locust
-  #   command:
-  #     [
-  #       "locust",
-  #       "-f",
-  #       "locustfile.py",
-  #       "--host",
-  #       "http://whoami.app.contoso.com",
-  #       "--no-web",
-  #       "-c",
-  #       "100",
-  #       "-r",
-  #       "20",
-  #       "--skip-log-setup",
-  #     ]
-  #   extra_hosts: 
-  #     whoami.app.contoso.com: 192.168.10.10
-  #   networks: 
-  #     traefik:
+  locust:
+    image: greggu/traefik-locust:0.1
+    hostname: locust
+    build:
+      context: ./locust
+    command:
+      [
+        "locust",
+        "-f",
+        "locustfile.py",
+        "--host",
+        "http://vote.app.contoso.com",
+        "--no-web",
+        "-c",
+        "100",
+        "-r",
+        "20",
+        "--skip-log-setup",
+      ]
+    extra_hosts:
+      vote.app.contoso.com: 192.168.10.10
+    networks:
+      traefik:
 
   # monitoring
   prometheus:
@@ -140,7 +142,7 @@ services:
     depends_on:
       - traefik
 
-networks: 
+networks:
   traefik:
     ipam:
       driver: default

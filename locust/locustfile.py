@@ -1,15 +1,18 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=
 
+import random
+
 from locust import HttpLocust, TaskSet, between
 
 
-def whoami(l):
-    l.client.get("/whoami")
+def vote(l):
+    l.client.get('/')
+    l.client.post('/', data={"vote": random.choice(['a', 'b'])})
 
 
 class UserBehavior(TaskSet):
-    tasks = {whoami: 1}
+    tasks = {vote: 1}
 
 
 class WebsiteUser(HttpLocust):

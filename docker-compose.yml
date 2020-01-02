@@ -2,13 +2,13 @@ version: "3"
 
 services:
   traefik:
-    image: traefik:2.1
+    image: traefik:latest
     hostname: traefik
-    # Enables the web UI and tells Traefik to listen to docker
     command:
       [
         "--api.insecure=true",
         "--providers.docker",
+        "--accesslog=true",
         "--metrics.prometheus=true",
         "--tracing.jaeger=true",
         "--tracing.jaeger.samplingServerURL=http://jaeger:5778/sampling",
@@ -24,7 +24,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       traefik:
-        ipv4_address: 192.168.10.10
+        ipv4_address: 172.16.0.10
 
   # demo apps
   whoami:
@@ -39,8 +39,10 @@ services:
     image: voting/vote:0.1
     labels:
       - "traefik.http.routers.vote.rule=Host(`vote.app.contoso.com`)"
-    ports:
-      - 5000:80
+      - "traefik.http.middlewares.test-inflightreq.inflightreq.amount=10"
+      - "traefik.http.routers.vote.middlewares=test-inflightreq"
+    # ports:
+    #   - 5000:80
     networks:
       traefik:
     depends_on:
@@ -91,9 +93,35 @@ services:
     networks:
       traefik:
 
-  locust:
+  locust-master:
     image: greggu/traefik-locust:0.1
-    hostname: locust
+    hostname: locust-master
+    build:
+      context: ./locust
+    command:
+      [
+        "locust",
+        "--master",
+        "-f",
+        "locustfile.py",
+        "--host",
+        "http://vote.app.contoso.com"
+        # "--no-web",
+        # "-c",
+        # "800",
+        # "-r",
+        # "80",
+        # "--skip-log-setup",
+      ]
+    extra_hosts:
+      vote.app.contoso.com: 172.16.0.10
+    ports:
+      - 8089:8089
+    networks:
+      traefik:
+
+  locust-slave:
+    image: greggu/traefik-locust:0.1
     build:
       context: ./locust
     command:
@@ -101,17 +129,20 @@ services:
         "locust",
         "-f",
         "locustfile.py",
+        "--slave",
+        "--master-host",
+        "locust-master",
         "--host",
-        "http://vote.app.contoso.com",
-        "--no-web",
-        "-c",
-        "100",
-        "-r",
-        "20",
-        "--skip-log-setup",
+        "http://vote.app.contoso.com"
+        # "--no-web",
+        # "-c",
+        # "800",
+        # "-r",
+        # "80",
+        # "--skip-log-setup",
       ]
     extra_hosts:
-      vote.app.contoso.com: 192.168.10.10
+      vote.app.contoso.com: 172.16.0.10
     networks:
       traefik:
 
@@ -147,4 +178,4 @@ networks:
     ipam:
       driver: default
       config:
-        - subnet: "192.168.10.0/24"
+        - subnet: "172.16.0.0/16"

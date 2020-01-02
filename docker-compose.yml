@@ -2,10 +2,10 @@ version: "3"
 
 services: 
   traefik:
-    image: traefik:latest
+    image: traefik:2.1
     hostname: traefik
     # Enables the web UI and tells Traefik to listen to docker
-    command: --api.insecure=true --providers.docker
+    command: --api.insecure=true --providers.docker --metrics.prometheus=true
     ports:
       # The HTTP port
       - "80:80"
@@ -16,6 +16,70 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     networks: 
       traefik:
+        ipv4_address: 192.168.10.10
+
+  whoami:
+    # A container that exposes an API to show its IP address
+    image: containous/whoami
+    labels:
+      - "traefik.http.routers.whoami.rule=Host(`whoami.app.contoso.com`)"
+    networks: 
+      traefik:
+
+  # locust:
+  #   image: greggu/traefik-locust:0.1
+  #   hostname: locust
+  #   build:
+  #     context: ./locust
+  #   command:
+  #     [
+  #       "locust",
+  #       "-f",
+  #       "locustfile.py",
+  #       "--host",
+  #       "http://whoami.app.contoso.com",
+  #       "--no-web",
+  #       "-c",
+  #       "100",
+  #       "-r",
+  #       "20",
+  #       "--skip-log-setup",
+  #     ]
+  #   extra_hosts: 
+  #     whoami.app.contoso.com: 192.168.10.10
+  #   networks: 
+  #     traefik:
+
+  # monitoring
+  prometheus:
+    image: prom/prometheus:v2.11.1
+    hostname: prometheus
+    networks:
+      traefik:
+    ports:
+      - 9090:9090
+    volumes:
+      - ./prometheus/conf/prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - traefik
+
+  grafana:
+    image: grafana/grafana:6.2.5
+    hostname: grafana
+    networks:
+      traefik:
+    ports:
+      - 3000:3000
+    environment:
+      - GF_ALERTING_ENABLED:false
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - traefik
 
 networks: 
   traefik:
+    ipam:
+      driver: default
+      config:
+        - subnet: "192.168.10.0/24"

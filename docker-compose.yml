@@ -36,10 +36,10 @@ services:
       traefik:
 
   vote:
-    image: voting/vote:0.1
+    image: greggu/vote:0.1
     labels:
       - "traefik.http.routers.vote.rule=Host(`vote.app.contoso.com`)"
-      - "traefik.http.middlewares.test-inflightreq.inflightreq.amount=10"
+      - "traefik.http.middlewares.test-inflightreq.inflightreq.amount=100"
       - "traefik.http.routers.vote.middlewares=test-inflightreq"
     # ports:
     #   - 5000:80
@@ -50,7 +50,7 @@ services:
       - redis
 
   worker:
-    image: voting/worker:0.1
+    image: greggu/worker:0.1
     ports:
       - 5432:5432
     networks:
@@ -60,7 +60,7 @@ services:
       - redis
 
   result:
-    image: voting/result:0.1
+    image: greggu/result:0.1
     labels:
       - "traefik.http.routers.result.rule=Host(`result.app.contoso.com`)"
     ports:

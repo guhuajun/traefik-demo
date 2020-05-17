@@ -1,19 +1,13 @@
-# -*- coding: utf-8 -*-
-# pylint: disable=
-
 import random
 
-from locust import HttpLocust, TaskSet, between
+from locust import HttpUser, task, between
 
 
-def vote(l):
-    l.client.get('/')
-    l.client.post('/', data={'vote': random.choice(['a', 'b'])})
-
-class UserBehavior(TaskSet):
-    tasks = {vote: 1}
-
-
-class WebsiteUser(HttpLocust):
-    task_set = UserBehavior
+class WebsiteUser(HttpUser):
     wait_time = between(1.0, 3.0)
+
+    @task(1)
+    def vote(self):
+        self.client.get('/')
+        self.client.post('/', data={'vote': random.choice(['a', 'b'])})
+

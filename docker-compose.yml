@@ -129,7 +129,7 @@ services:
         "locust",
         "-f",
         "locustfile.py",
-        "--slave",
+        "--worker",
         "--master-host",
         "locust-master",
         "--host",
